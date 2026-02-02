@@ -1,0 +1,338 @@
+# Snakemake file - input raw fastq reads to generate count tables for natural communities
+# by Magdalena W Slawinska mslawinska [at] mpipz.mpg.de
+# Inspired by scripts from José Flores-Uribe, Pengfan Zhang, and Ruben Garrido-Oter
+
+configfile: "config.yaml"
+
+import logging
+import io 
+import os
+import gzip
+import glob
+import pandas as pd
+import pathlib
+import re
+from snakemake.exceptions import print_exception, WorkflowError
+
+#----SET VARIABLES----#
+
+PROJ = config["proj_name"]
+INPUTDIR = config["input_dir"]
+SCRATCH = config["scratch"]
+OUTPUTDIR = config["outputDIR"]
+UNTRIMMEDDIR = config["untrimmed_raw_data"]
+PCT = config["pct"]
+
+#----PIPELINE----#
+if PCT != 100:
+  PROJ = f"{PROJ}_{PCT}"
+INPUTDIR_new = f"{SCRATCH}/{INPUTDIR}_{PCT}"
+UNTRIMMEDDIR_new = f"{SCRATCH}/{UNTRIMMEDDIR}_{PCT}"
+print("PROJECT NAME:")
+print(PROJ)
+
+# Create base directories
+os.makedirs(SCRATCH, exist_ok=True)
+os.makedirs(OUTPUTDIR, exist_ok=True)
+
+rule all:
+  input:
+    os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-asv-table.tsv"),
+    os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-taxonomy.tsv"),
+    os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-rep-seqs.fasta"),
+    os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxa-barplots.qzv"),
+    os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qzv")
+
+rule subsample_reads:
+  output:
+    directory(UNTRIMMEDDIR_new)
+  params:
+    pct = PCT
+  shell:
+    """
+    mkdir -p {output}
+    if [ {params.pct} -eq 100 ]; then
+      cp {INPUTDIR}/*_1*.fq.gz {INPUTDIR}/*_2*.fq.gz {output}/
+    else
+      for f in {INPUTDIR}/*_1*.fq.gz; do
+        base=$(basename $f)
+        vsearch --fastx_subsample $f \
+          --fastqout - \
+          --sample_pct {params.pct} \
+          --randseed 2018 | gzip -c > {output}/$base
+      done
+      for f in {INPUTDIR}/*_2*.fq.gz; do
+        base=$(basename $f)
+        vsearch --fastx_subsample $f \
+          --fastqout - \
+          --sample_pct {params.pct} \
+          --randseed 2018 | gzip -c > {output}/$base
+      done
+    fi
+    """
+
+rule remove_AC:
+  input:
+    UNTRIMMEDDIR_new
+  output:
+    fwd = os.path.join(INPUTDIR_new, "forward.fastq.gz"),
+    rev = os.path.join(INPUTDIR_new, "reverse.fastq.gz")
+  shell:
+    """
+    mkdir -p $(dirname {output.fwd})
+    for fwd in {input}/*_1.fq.gz; do
+      rev=${{fwd/_1.fq.gz/_2.fq.gz}}
+      [ -f "$rev" ] || {{ echo "Missing mate for $fwd" >&2; exit 1; }}
+      cutadapt -u 2 -U 2 \
+        -o {output.fwd} \
+        -p {output.rev} \
+        $fwd $rev
+      break  # Only process first pair since you only have one
+    done
+    """
+
+rule qiime_import:
+  input:
+    fwd = os.path.join(INPUTDIR_new,"forward.fastq.gz"),
+    rev = os.path.join(INPUTDIR_new,"reverse.fastq.gz")
+  output:
+    q2_import = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-multiplexed-seqs.qza")
+  params:
+    input_dir = os.path.join(INPUTDIR_new)
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_import.log")
+  shell:
+   "qiime tools import \
+       --type 'MultiplexedPairedEndBarcodeInSequence' \
+       --input-path {params.input_dir} \
+       --output-path {output.q2_import} &> {log}"
+
+rule qiime_demux:
+  input:
+    q2_import = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-multiplexed-seqs.qza"),
+    mapping_file = config["mappingfile"]
+  output:
+    q2_demux_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs.qza"),
+    q2_demux_untrimmed = os.path.join(SCRATCH, "qiime2", PROJ, PROJ + "-untrimmed-demultiplexed-seqs.qza")
+  threads: 
+    config["cutadapt_cores"]
+  params:
+    batch_size = config["cutadapt_batch"],
+    error_rate = config["cutadapt_error_rate"]
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux.log")
+  shell:
+   "qiime cutadapt demux-paired \
+       --i-seqs {input.q2_import} \
+       --p-error-rate {params.error_rate} \
+       --m-forward-barcodes-file {input.mapping_file} \
+       --m-reverse-barcodes-file {input.mapping_file} \
+       --m-forward-barcodes-column Forward_Barcode \
+       --m-reverse-barcodes-column Reverse_Barcode \
+       --o-per-sample-sequences {output.q2_demux_file} \
+       --p-mixed-orientation TRUE \
+       --p-anchor-forward-barcode TRUE \
+       --p-anchor-reverse-barcode TRUE \
+       --p-batch-size {params.batch_size} \
+       --p-cores {threads} \
+       --verbose \
+       --o-untrimmed-sequences {output.q2_demux_untrimmed} > {log} 2>&1"
+
+rule qiime_summarize:
+  input:
+    q2_demux_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs.qza")
+  output:
+    q2_qzv_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs.qzv")
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux_summarize.log")
+  shell:
+   "qiime demux summarize \
+    --i-data {input.q2_demux_file} \
+    --o-visualization {output.q2_qzv_file} &> {log}"
+
+
+rule qiime_trim:
+  input:
+    q2_demux_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs.qza")
+  output:
+    q2_trimmed_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs-trimmed.qza")
+  threads: 
+    config["cutadapt_cores"]
+  params:
+    primerF = config["primerF"],
+    primerR = config["primerR"],
+    primer_err = config["primer_err"],
+    overlap = config["primer_overlap"]
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux_trim.log")
+  shell:
+   "qiime cutadapt trim-paired \
+      --i-demultiplexed-sequences {input.q2_demux_file} \
+      --p-front-f {params.primerF} \
+      --p-front-r {params.primerR} \
+      --p-cores {threads} \
+      --p-error-rate {params.primer_err} \
+      --o-trimmed-sequences {output.q2_trimmed_file} \
+      --p-discard-untrimmed \
+      --p-overlap {params.overlap}"
+
+rule qiime_trim_summarize:
+  input:
+    q2_trimmed_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs-trimmed.qza")
+  output:
+    q2_trimmed_viz = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs-trimmed.qzv")
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_trim_summarize.log")
+  shell:
+   "qiime demux summarize \
+      --i-data {input.q2_trimmed_file} \
+      --o-visualization {output.q2_trimmed_viz} \
+      &> {log}"
+
+rule qiime_denoise:
+  input:
+    q2_trimmed_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs-trimmed.qza")
+  output:
+    q2_denoised_table = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-table.qza"),
+    q2_denoised_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-representative-sequences.qza"),
+    q2_denoised_stats = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qza")
+  threads:
+    config["q2_cores"]
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_dada2_denoise.log")
+  params:
+    trunc_len_f = config["trunc_len_f"],
+    trunc_len_r = config["trunc_len_r"],
+    max_ee_f = config["max_ee_f"],
+    max_ee_r = config["max_ee_r"]
+  shell:
+    "qiime dada2 denoise-paired \
+      --i-demultiplexed-seqs {input.q2_trimmed_file} \
+      --p-trunc-len-f {params.trunc_len_f} \
+      --p-trunc-len-r {params.trunc_len_r} \
+      --p-trim-left-f 0 \
+      --p-trim-left-r 0 \
+      --p-max-ee-f {params.max_ee_f} \
+      --p-max-ee-r {params.max_ee_r} \
+      --p-trunc-q 2 \
+      --p-min-overlap 12 \
+      --p-pooling-method independent \
+      --p-chimera-method consensus \
+      --p-min-fold-parent-over-abundance 1.0 \
+      --p-n-threads {threads} \
+      --p-n-reads-learn 1000000 \
+      --p-hashed-feature-ids \
+      --p-retain-all-samples \
+      --o-representative-sequences {output.q2_denoised_file} \
+      --o-table {output.q2_denoised_table} \
+      --o-denoising-stats {output.q2_denoised_stats} \
+      &> {log}"
+
+rule qiime_denoise_stats_visualize:
+  input:
+    q2_denoised_stats = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qza")
+  output:
+    q2_denoised_stats_viz = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qzv")
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_denoise_stats_visualize.log")
+  shell:
+   "qiime metadata tabulate \
+      --m-input-file {input.q2_denoised_stats} \
+      --o-visualization {output.q2_denoised_stats_viz} \
+      &> {log}"
+
+rule qiime_classify:
+  input:
+    q2_denoised_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-representative-sequences.qza"),
+    classifier = config["qiime_classifier"]
+  output:
+    q2_classification = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxonomy.qza")
+  threads:
+    config["q2_cores"]
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_classify.log")
+  shell:
+   "qiime feature-classifier classify-sklearn \
+      --i-classifier {input.classifier} \
+      --i-reads {input.q2_denoised_file} \
+      --o-classification {output.q2_classification} \
+      --p-n-jobs {threads} \
+      &> {log}"
+  
+rule qiime_taxa_barplot:
+    input:
+      q2_denoised_table = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-table.qza"),
+      q2_classification = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxonomy.qza")
+    output:
+      q2_taxa_barplot = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxa-barplots.qzv")
+    log:
+      os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_taxa_barplot.log")
+    shell:
+     "qiime taxa barplot \
+        --i-table {input.q2_denoised_table} \
+        --i-taxonomy {input.q2_classification} \
+        --o-visualization {output.q2_taxa_barplot} \
+        &> {log}"
+  
+rule qiime_taxonomy_export:
+  input:
+    q2_classification = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxonomy.qza")
+  output:
+    taxonomy_tsv = os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-taxonomy.tsv")
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_taxonomy_export.log")
+  shell:
+    """
+    tmpdir=$(dirname {output.taxonomy_tsv})/.tmp_taxonomy_export
+    mkdir -p $tmpdir
+    qiime tools export \
+      --input-path {input.q2_classification} \
+      --output-path $tmpdir \
+      &> {log}
+    mv $tmpdir/taxonomy.tsv {output.taxonomy_tsv}
+    rm -rf $tmpdir
+    """
+
+rule qiime_table_export:
+  input:
+    q2_denoised_table = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-table.qza")
+  output:
+    asv_table = os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-asv-table.tsv")
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_table_export.log")
+  shell:
+    """
+    tmpdir=$(dirname {output.asv_table})/.tmp_table_export
+    mkdir -p $tmpdir
+    qiime tools export \
+      --input-path {input.q2_denoised_table} \
+      --output-path $tmpdir \
+      &> {log}
+    biom convert \
+      -i $tmpdir/feature-table.biom \
+      -o {output.asv_table} \
+      --to-tsv
+    rm -rf $tmpdir
+    """
+
+
+rule qiime_rep_seqs_export:
+  input:
+    q2_denoised_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-representative-sequences.qza")
+  output:
+    rep_seqs_fasta = os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-rep-seqs.fasta")
+  log:
+    os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_rep_seqs_export.log")
+  shell:
+    """
+    tmpdir=$(dirname {output.rep_seqs_fasta})/.tmp_repseqs_export
+    mkdir -p $tmpdir
+    qiime tools export \
+      --input-path {input.q2_denoised_file} \
+      --output-path $tmpdir \
+      &> {log}
+    mv $tmpdir/dna-sequences.fasta {output.rep_seqs_fasta}
+    rm -rf $tmpdir
+    """
+
+

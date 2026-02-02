@@ -1,0 +1,64 @@
+proj_name: your_project_name
+input_dir: novogene_data
+untrimmed_raw_data: untrimmed_raw_data
+raw_data: raw_data
+mappingfile: path_to_your_mapping_file
+scratch: scratch
+outputDIR: Results
+
+# Subsample flags
+pct: 100
+
+# QIIME2-specific flags
+# Defaults for amplicon tag-sequencing - uncomment only parameters you need.
+
+# cutadapt: primer trimming
+# B3
+# 341F
+# primerF: CCTACGGGAGGCAGCAG
+# # 806R
+# primerR: GGACTACHVGGGTWTCTAAT 
+# B5 
+# 799F
+primerF: AACMGGATTAGATACCC
+# 1192R
+primerR: ACGTCATCCCCACCTTCC
+primer_err: 0.25
+primer_overlap: 10
+cutadapt_cores: 20
+# useful when one has lots of samples, higher values might not be necessarily better
+cutadapt_batch: 0
+
+# error rate for cutadapt
+# Set to 0 to allow 0 errors, 0.1 (default) to allow 1 error, 0.17 for 2 errors.
+cutadapt_error_rate: 0
+
+
+#Qiime2 parameters
+# threads for qiime2 steps
+q2_cores: 20
+# classifier to use for 16S, B5 primers
+# Adapt accordingly if you want to use another fragment
+qiime_classifier: /biodata/dep_psl/grp_rgo/slawinska/software/16S_analysis/ref_data/silva-138.2/classifier_V5V7/output/silva-138.2-ssu-classifier-V5V7.qza
+
+# DADA2: denoising parameters
+# truncation lengths
+# Positions where reads should be truncated based on quality profiles
+# guideline: check the median quality scores of your reds
+# if the quality drops below 20-25 at a certain position consider truncating there
+# there must be overlap between forward and reverse reads after truncation (at least 12 bp)
+trunc_len_f: 0
+trunc_len_r: 0
+# maximum expected errors (moderate, default values)
+# do not change unless you know what you are doing
+# e.g. if reverse reads have borderline quality you might want to relax max_ee_r (e.g. to 3.0)
+# if truncation would break the overlap
+# this way you retain more reads, however you might also introduce more errors
+max_ee_f: 2.0
+max_ee_r: 2.0
+
+
+
+
+
+
