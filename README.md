@@ -100,6 +100,7 @@ micromamba activate qiime-2024.10-Syncom
 # Run Snakemake 
 snakemake -c 20 -p --snakefile Snakefile-bacteriapipeline
 ```
+- you might change `#SBATCH --cpus-per-task=` and `#SBATCH --mem=100G` if needed.
 
 Run the job:
 ```
