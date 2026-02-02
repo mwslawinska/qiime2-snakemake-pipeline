@@ -35,14 +35,14 @@ micromamba activate qiime-2024.10-Syncom
 
 ## 3. Organize Raw FASTQ Files
 
-- Place your raw sequencing FASTQ files into the `novogene_data` directory.
+- Place your raw sequencing FASTQ files into the `untrimmed_raw_data` directory.
 - The files must follow this naming convention:
   - Forward reads (`XXXXXXXXX_1.fq.gz`) : `sample_1.fq.gz`
   - Reverse reads (`XXXXXXXXX_2.fq.gz`) : `sample_2.fq.gz`
 - If renaming is necessary, do so after copying:
     ```
-    cp /path/to/your/rawdata/*fastq.gz novogene_data/
-    cd novogene_data
+    cp /path/to/your/rawdata/*fastq.gz untrimmed_raw_data/
+    cd untrimmed_raw_data
     mv XXXXXX.fq.gz sample_1.fq.gz
     mv XXXXXX.fq.gz sample_2.fq.gz
     ```
@@ -63,7 +63,7 @@ micromamba activate qiime-2024.10-Syncom
 - [] trunc_len_f and trunc_len_r are set to 0; they can be adapted based on the quality of your reads
 
 ### Required files
-- [] `sample_1.fq.gz` and `sample_2.fq.gz` stored in folder `novogene_data`
+- [] `sample_1.fq.gz` and `sample_2.fq.gz` stored in folder `untrimmed_raw_data`
 - [] `mapping.txt` file , stored in folder `metadata`. Don't forget to check the mapping file using a tool like [Keemei](https://keemei.qiime2.org/).
 
 ## 5. Run Snakemake
