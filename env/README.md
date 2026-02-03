@@ -1,8 +1,8 @@
-# README_install_micromamba.md
+# README.md
 
 # Micromamba Installation on Server
 
-This guide describes how to install and initialize micromamba on the server, storing environments on netscratch. Attention, `USER` must be replaced by your current username in the server.
+This guide describes how to install and initialize micromamba on the server, storing environments on netscratch. Attention, `$USER` must be replaced by your current username in the server.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ This guide describes how to install and initialize micromamba on the server, sto
 2. Create a software directory on netscratch
     
     ```bash
-    cd /netscratch/dep_psl/grp_rgo/USER
+    cd /netscratch/dep_psl/grp_rgo/$USER
     mkdir -p software
     cd software
     ```
@@ -35,7 +35,7 @@ This guide describes how to install and initialize micromamba on the server, sto
     
     ```bash
     # This sets the envs root to /netscratch/dep_psl/grp_rgo/USER/software/micromamba_environments
-    ./bin/micromamba shell init -s bash -r /netscratch/dep_psl/grp_rgo/USER/software/micromamba_environments
+    ./bin/micromamba shell init -s bash -r /netscratch/dep_psl/grp_rgo/$USER/software/micromamba_environments
     ```
     
 5. Ensure `.profile` sources `.bashrc`
@@ -93,12 +93,7 @@ This guide describes how to install and initialize micromamba on the server, sto
     or start an interactive session (shell, R, Python as appropriate) to confirm functionality.
 ## Notes
 
-- The example envs directory:
-    
-    ```
-    /netscratch/dep_psl/grp_rgo/USER/software/micromamba_environments
-    ```
-    
+- Use `micromamba info` to see if the envs directories location was correctly set in the previous steps.
 - If `micromamba` is not found after initialization, confirm your shell is bash and that `~/.bashrc` modifications (from the init step) were applied.
 
 ## Troubleshooting
