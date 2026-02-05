@@ -6,8 +6,8 @@ Follow these steps to prepare your input files before running the analysis pipel
 
 ## 0. Make sure you have micromamba and the environment installed and running
 
-- If you haven't installed it go into env folder and follow `README_install_micromamba.md` instructions.
-- If you have already installed it, activate the environemnt.
+- If you haven't installed it go into env folder and follow `README.md` instructions.
+- If you have already installed it, activate the environemnt. To check the list of installed environments use `micromamba env list`
 ```
 micromamba activate qiime-2024.10-Syncom
 ```
@@ -20,8 +20,7 @@ micromamba activate qiime-2024.10-Syncom
 - Identify the primer section (e.g., B3 or B5).
   - Uncomment the primer sequences used in this library.
   - Comment out primer sequences not used.
-- Ensure the reference fasta file name is correctly specified under the appropriate key in the config file (e.g., `reference: metadata/reference.fasta`).
-- If running only a subset of the library through the pipeline, then modify the `pct` value (e.g., `pct: 50` means to use only 50% of the total reads).
+- If running only a subset of the library reads through the pipeline, then modify the `pct` value (e.g., `pct: 50` means to use only 50% of the total reads).
 
 ## 2. Prepare Metadata Files
 
