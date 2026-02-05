@@ -1,38 +1,45 @@
+# Parameters that require personalization -----
 proj_name: your_project_name
+
+#Uncomment the lines with the primer sequences used to generate the amplicon library.
+# cutadapt: primer trimming. 
+# B3 (341F-806R)
+# primerF: CCTACGGGAGGCAGCAG
+# primerR: GGACTACHVGGGTWTCTAAT 
+# B5 (799F-1192R)
+primerF: AACMGGATTAGATACCC
+primerR: ACGTCATCCCCACCTTCC
+
+# Optional parameters -----
+# Subsample flags. Define which fraction (default: 100%) of the reads to process. Modify if you want to run a portion only.
+pct: 100
+# cutadapt: demux - error rate
+# Set to 0 to allow 0 errors, 0.1 (default) to allow 1 error, 0.17 for 2 errors when matching to the barcode
+cutadapt_error_rate: 0
+
+# From this point on, do not change unless you know what you are doing ----
+
+# snakemake parameters -----
 input_dir: novogene_data
 untrimmed_raw_data: untrimmed_raw_data
 raw_data: raw_data
-mappingfile: path_to_your_mapping_file
+mappingfile: metadata/mapping.txt
 scratch: scratch
 outputDIR: Results
 
-# Subsample flags
-pct: 100
-
-# QIIME2-specific flags
-# Defaults for amplicon tag-sequencing - uncomment only parameters you need.
-
-# cutadapt: primer trimming
-# B3
-# 341F
-# primerF: CCTACGGGAGGCAGCAG
-# # 806R
-# primerR: GGACTACHVGGGTWTCTAAT 
-# B5 
-# 799F
-primerF: AACMGGATTAGATACCC
-# 1192R
-primerR: ACGTCATCCCCACCTTCC
+# cutadapt parameters -----
+# cutadapt: primer trimming parameters
 primer_err: 0.25
 primer_overlap: 10
-cutadapt_cores: 20
+
+#cutadapt: demux
 # useful when one has lots of samples, higher values might not be necessarily better
-cutadapt_batch: 0
+cutadapt_cores: 20
+# If you have more than 96 samples setting cutadapt_batch to a value like 25, may solve "too many files" errors related to sample quantity. 
+cutadapt_batch: 25
 
-# error rate for cutadapt
-# Set to 0 to allow 0 errors, 0.1 (default) to allow 1 error, 0.17 for 2 errors.
-cutadapt_error_rate: 0
-
+# QIIME2-specific flags -----
+# Defaults for amplicon tag-sequencing - uncomment only parameters you need.
 
 #Qiime2 parameters
 # threads for qiime2 steps
@@ -56,9 +63,3 @@ trunc_len_r: 0
 # this way you retain more reads, however you might also introduce more errors
 max_ee_f: 2.0
 max_ee_r: 2.0
-
-
-
-
-
-
