@@ -41,7 +41,8 @@ rule all:
     os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-taxonomy.tsv"),
     os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-rep-seqs.fasta"),
     os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxa-barplots.qzv"),
-    os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qzv")
+    os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qzv"),
+    os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs.qzv")
 
 rule subsample_reads:
   output:
@@ -102,10 +103,12 @@ rule qiime_import:
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_import.log")
   shell:
-   "qiime tools import \
+   """
+   qiime tools import \
        --type 'MultiplexedPairedEndBarcodeInSequence' \
        --input-path {params.input_dir} \
-       --output-path {output.q2_import} &> {log}"
+       --output-path {output.q2_import} > {log} 2>&1
+    """
 
 rule qiime_demux:
   input:
@@ -122,7 +125,8 @@ rule qiime_demux:
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux.log")
   shell:
-   "qiime cutadapt demux-paired \
+   """
+   qiime cutadapt demux-paired \
        --i-seqs {input.q2_import} \
        --p-error-rate {params.error_rate} \
        --m-forward-barcodes-file {input.mapping_file} \
@@ -136,7 +140,8 @@ rule qiime_demux:
        --p-batch-size {params.batch_size} \
        --p-cores {threads} \
        --verbose \
-       --o-untrimmed-sequences {output.q2_demux_untrimmed} > {log} 2>&1"
+       --o-untrimmed-sequences {output.q2_demux_untrimmed} > {log} 2>&1
+   """
 
 rule qiime_summarize:
   input:
@@ -146,9 +151,11 @@ rule qiime_summarize:
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux_summarize.log")
   shell:
-   "qiime demux summarize \
+   """
+   qiime demux summarize \
     --i-data {input.q2_demux_file} \
-    --o-visualization {output.q2_qzv_file} &> {log}"
+    --o-visualization {output.q2_qzv_file} > {log} 2>&1
+   """
 
 
 rule qiime_trim:
@@ -166,7 +173,8 @@ rule qiime_trim:
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux_trim.log")
   shell:
-   "qiime cutadapt trim-paired \
+   """
+   qiime cutadapt trim-paired \
       --i-demultiplexed-sequences {input.q2_demux_file} \
       --p-front-f {params.primerF} \
       --p-front-r {params.primerR} \
@@ -174,7 +182,8 @@ rule qiime_trim:
       --p-error-rate {params.primer_err} \
       --o-trimmed-sequences {output.q2_trimmed_file} \
       --p-discard-untrimmed \
-      --p-overlap {params.overlap}"
+      --p-overlap {params.overlap} > {log} 2>&1
+  """
 
 rule qiime_trim_summarize:
   input:
@@ -184,10 +193,11 @@ rule qiime_trim_summarize:
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_trim_summarize.log")
   shell:
-   "qiime demux summarize \
+   """
+   qiime demux summarize \
       --i-data {input.q2_trimmed_file} \
-      --o-visualization {output.q2_trimmed_viz} \
-      &> {log}"
+      --o-visualization {output.q2_trimmed_viz} > {log} 2>&1
+  """
 
 rule qiime_denoise:
   input:
@@ -206,7 +216,8 @@ rule qiime_denoise:
     max_ee_f = config["max_ee_f"],
     max_ee_r = config["max_ee_r"]
   shell:
-    "qiime dada2 denoise-paired \
+    """
+    qiime dada2 denoise-paired \
       --i-demultiplexed-seqs {input.q2_trimmed_file} \
       --p-trunc-len-f {params.trunc_len_f} \
       --p-trunc-len-r {params.trunc_len_r} \
@@ -225,8 +236,8 @@ rule qiime_denoise:
       --p-retain-all-samples \
       --o-representative-sequences {output.q2_denoised_file} \
       --o-table {output.q2_denoised_table} \
-      --o-denoising-stats {output.q2_denoised_stats} \
-      &> {log}"
+      --o-denoising-stats {output.q2_denoised_stats} > {log} 2>&1
+    """
 
 rule qiime_denoise_stats_visualize:
   input:
@@ -252,12 +263,13 @@ rule qiime_classify:
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_classify.log")
   shell:
-   "qiime feature-classifier classify-sklearn \
+   """
+   qiime feature-classifier classify-sklearn \
       --i-classifier {input.classifier} \
       --i-reads {input.q2_denoised_file} \
       --o-classification {output.q2_classification} \
-      --p-n-jobs {threads} \
-      &> {log}"
+      --p-n-jobs {threads} > {log} 2>&1
+   """
   
 rule qiime_taxa_barplot:
     input:
@@ -268,11 +280,12 @@ rule qiime_taxa_barplot:
     log:
       os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_taxa_barplot.log")
     shell:
-     "qiime taxa barplot \
+     """
+     qiime taxa barplot \
         --i-table {input.q2_denoised_table} \
         --i-taxonomy {input.q2_classification} \
-        --o-visualization {output.q2_taxa_barplot} \
-        &> {log}"
+        --o-visualization {output.q2_taxa_barplot} > {log} 2>&1
+     """
   
 rule qiime_taxonomy_export:
   input:
