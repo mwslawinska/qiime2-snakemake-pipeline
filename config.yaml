@@ -1,6 +1,9 @@
 # Parameters that require personalization -----
 proj_name: your_project_name
 
+# QIIME2 container to use
+singularity_image: "/netscratch/dep_psl/common/singularity_sifs/qiime-2026.1.sif"
+
 #Uncomment the lines with the primer sequences used to generate the amplicon library.
 # cutadapt: primer trimming. 
 # B3 (341F-806R)
@@ -33,8 +36,10 @@ primer_err: 0.25
 primer_overlap: 10
 
 #cutadapt: demux
+# how many bp need to be cut from the reads (we remove 2 bp, AC)
+barcode_cut: 2 
 # useful when one has lots of samples, higher values might not be necessarily better
-cutadapt_cores: 20
+cutadapt_cores: 32
 # If you have more than 96 samples setting cutadapt_batch to a value like 25, may solve "too many files" errors related to sample quantity. 
 cutadapt_batch: 25
 
@@ -43,10 +48,10 @@ cutadapt_batch: 25
 
 #Qiime2 parameters
 # threads for qiime2 steps
-q2_cores: 20
+q2_cores: 32
 # classifier to use for 16S, B5 primers
 # Adapt accordingly if you want to use another fragment
-qiime_classifier: /biodata/dep_psl/grp_rgo/slawinska/software/16S_analysis/ref_data/silva-138.2/classifier_V5V7/output/silva-138.2-ssu-classifier-V5V7.qza
+qiime_classifier: /netscratch/dep_psl/common/qiime_classifiers/classifier_2026.1_V5V7-classifier.qza
 
 # DADA2: denoising parameters
 # truncation lengths
