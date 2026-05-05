@@ -4,15 +4,6 @@ This pipeline was created for 16S natural communities sequenced at Novogene.
 
 Follow these steps to prepare your input files before running the analysis pipeline:
 
-## 0. Make sure you have micromamba and the environment installed and running
-
-- If you haven't installed it go into env folder and follow `README.md` instructions.
-- If you have already installed it, activate the environemnt. To check the list of installed environments use `micromamba env list`
-```
-micromamba activate qiime-2024.10-Syncom
-```
-
-
 ## 1. Edit the Config File
 
 - Open the configuration file `config.yaml` for your project.
@@ -48,9 +39,6 @@ micromamba activate qiime-2024.10-Syncom
 
 ## 4. Checklist before running Snakemake
 
-### Micromamba
-- [] Is the `qiime-2024.10-Syncom` environment active. If not, run `micromamba activate qiime-2024.10-Syncom`
-
 ### `config.yaml`
 
 - [] Library name has been stored into `proj_name`
@@ -84,6 +72,7 @@ ssh <user>@hpcXX.mpipz.mpg.de
 Go to your project directory.
 In your project directory, `mkdir logs` for slurm logs (will tell you if the job crashes).
 
+`run_snakemake.slurm` automatically activates the required environment and module (you do not need to install or configure anything).
 Edit `run_snakemake.slurm`:
 ```
 #!/bin/bash
@@ -93,11 +82,27 @@ Edit `run_snakemake.slurm`:
 #SBATCH --mem=100G
 #SBATCH --output=[your_dir]/logs/your_project_name.%J.out <-- EDIT THIS
 #SBATCH --error=[your_dir]/logs/your_project_name.%J.err <-- EDIT THIS
-# Activate the environment
-source ~/.bashrc
-micromamba activate qiime-2024.10-Syncom
-# Run Snakemake 
-snakemake -c 20 -p --snakefile Snakefile-bacteriapipeline
+
+# Make sure logs directory exists
+mkdir -p ./logs
+
+# Activate environment if needed
+source /opt/share/software/scs/appStore/modules/init/profile.sh
+
+# Load Singularity bindings if required by your HPC
+module load singularity-binds/default
+
+# Run Snakemake workflow
+# -p: print each shell command
+# --use-singularity: use the Singularity image specified in each rule
+# --rerun-incomplete: resume workflow if interrupted
+snakemake \
+    --snakefile Snakefile-bacteriapipeline-2026.1 \
+    --cores 32 \
+    -p \
+    --use-singularity \
+    --singularity-args="--cleanenv"
+
 ```
 - you might change `#SBATCH --cpus-per-task=` and `#SBATCH --mem=100G` if needed.
 
