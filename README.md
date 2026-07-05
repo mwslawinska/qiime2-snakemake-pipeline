@@ -65,10 +65,8 @@ You have two options to run the pipeline:
 
 ### 5a. Running from hpc nodes (faster)
 
-Log into hpc (put the number instead of hpcXX, e.g. hpc01):
-```
-ssh <user>@hpcXX.mpipz.mpg.de
-```
+Log into hpc.
+
 Go to your project directory.
 In your project directory, `mkdir logs` for slurm logs (will tell you if the job crashes).
 
@@ -87,17 +85,15 @@ Edit `run_snakemake.slurm`:
 mkdir -p ./logs
 
 # Activate environment if needed
-source /opt/share/software/scs/appStore/modules/init/profile.sh
-
-# Load Singularity bindings if required by your HPC
-module load singularity-binds/default
+# Load your institution's Singularity module here, e.g.:
+# module load singularity
 
 # Run Snakemake workflow
 # -p: print each shell command
 # --use-singularity: use the Singularity image specified in each rule
 # --rerun-incomplete: resume workflow if interrupted
 snakemake \
-    --snakefile Snakefile-bacteriapipeline-2026.1 \
+    --snakefile Snakefile-bacteriapipeline \
     --cores 32 \
     -p \
     --use-singularity \
@@ -116,7 +112,7 @@ If you want to check if it's running, you can do `squeue`.
 ### 5b. Running from your node (screen)
 In this example we will use 20 cores ( `-c 20` ) for the pipeline. It's recommended to run with option `-p` to print into the console the actual command being run as it could help with troubleshooting.
 ```
-snakemake -c 20 -p --snakefile Snakefile-SynCom
+snakemake -c 20 -p --snakefile Snakefile-bacteriapipeline
 ```
 
 ## Authors and acknowledgment

@@ -12,6 +12,7 @@ import glob
 import pandas as pd
 import pathlib
 import re
+import sys
 from snakemake.exceptions import print_exception, WorkflowError
 
 #----SET VARIABLES----#
@@ -28,8 +29,8 @@ if PCT != 100:
   PROJ = f"{PROJ}_{PCT}"
 INPUTDIR_new = f"{SCRATCH}/{INPUTDIR}_{PCT}"
 UNTRIMMEDDIR_new = f"{SCRATCH}/{UNTRIMMEDDIR}_{PCT}"
-print("PROJECT NAME:")
-print(PROJ)
+print("PROJECT NAME:", file=sys.stderr)
+print(PROJ, file=sys.stderr)
 
 # Create base directories
 os.makedirs(SCRATCH, exist_ok=True)

@@ -1,0 +1,5 @@
+novogene_data/
+scratch/
+Results/
+.snakemake/
+dag.dot

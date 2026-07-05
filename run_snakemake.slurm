@@ -10,17 +10,15 @@
 mkdir -p ./logs
 
 # Activate environment if needed
-source /opt/share/software/scs/appStore/modules/init/profile.sh
-
-# Load Singularity bindings if required by your HPC
-module load singularity-binds/default
+# Load your institution's Singularity module here, e.g.:
+# module load singularity
 
 # Run Snakemake workflow
 # -p: print each shell command
 # --use-singularity: use the Singularity image specified in each rule
 # --rerun-incomplete: resume workflow if interrupted
 snakemake \
-    --snakefile Snakefile-bacteriapipeline-2026.1 \
+    --snakefile Snakefile-bacteriapipeline \
     --cores 32 \
     -p \
     --use-singularity \

@@ -2,7 +2,7 @@
 proj_name: your_project_name
 
 # QIIME2 container to use
-singularity_image: "/netscratch/dep_psl/common/singularity_sifs/qiime-2026.1.sif"
+singularity_image: "/path/to/qiime-2026.1.sif"
 
 #Uncomment the lines with the primer sequences used to generate the amplicon library.
 # cutadapt: primer trimming. 
@@ -49,9 +49,8 @@ cutadapt_batch: 25
 #Qiime2 parameters
 # threads for qiime2 steps
 q2_cores: 32
-# classifier to use for 16S, B5 primers
-# Adapt accordingly if you want to use another fragment
-qiime_classifier: /netscratch/dep_psl/common/qiime_classifiers/classifier_2026.1_V5V7-classifier.qza
+# classifier to use
+qiime_classifier: /path/to/your_classifier.qza
 
 # DADA2: denoising parameters
 # truncation lengths
