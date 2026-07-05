@@ -96,8 +96,6 @@ rule qiime_import:
     input_dir = os.path.join(INPUTDIR_new)
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_import.log")
-  singularity:
-    config["singularity_image"]
   shell:
    """
    qiime tools import \
@@ -132,8 +130,6 @@ rule qiime_demux:
     barcode_cut = config["barcode_cut"]
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux.log")
-  singularity:
-    config["singularity_image"]
   shell:
    """
    qiime cutadapt demux-paired \
@@ -162,8 +158,6 @@ rule qiime_summarize:
     q2_qzv_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs.qzv")
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_demux_summarize.log")
-  singularity:
-    config["singularity_image"]
   shell:
    """
    qiime demux summarize \
@@ -179,8 +173,6 @@ rule qiime_trim:
     q2_trimmed_file = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs-trimmed.qza")
   threads: 
     config["cutadapt_cores"]
-  singularity:
-    config["singularity_image"]
   params:
     primerF = config["primerF"],
     primerR = config["primerR"],
@@ -208,8 +200,6 @@ rule qiime_trim_summarize:
     q2_trimmed_viz = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-demultiplexed-seqs-trimmed.qzv")
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_trim_summarize.log")
-  singularity:
-    config["singularity_image"]
   shell:
    """
    qiime demux summarize \
@@ -244,8 +234,6 @@ rule qiime_denoise:
     trunc_len_r = config["trunc_len_r"],
     max_ee_f = config["max_ee_f"],
     max_ee_r = config["max_ee_r"]
-  singularity:
-    config["singularity_image"]
   shell:
     """
     qiime dada2 denoise-paired \
@@ -281,8 +269,6 @@ rule qiime_denoise_stats_visualize:
     q2_denoised_stats_viz = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-denoising-stats.qzv")
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_denoise_stats_visualize.log")
-  singularity:
-    config["singularity_image"]
   shell:
    """
    qiime metadata tabulate \
@@ -300,8 +286,6 @@ rule qiime_classify:
     config["q2_cores"]
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_classify.log")
-  singularity:
-    config["singularity_image"]
   shell:
    """
    qiime feature-classifier classify-sklearn \
@@ -319,8 +303,6 @@ rule qiime_taxa_barplot:
       q2_taxa_barplot = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxa-barplots.qzv")
     log:
       os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_taxa_barplot.log")
-    singularity:
-      config["singularity_image"]
     shell:
      """
      qiime taxa barplot \
@@ -342,8 +324,6 @@ rule qiime_taxa_barplot2:
       q2_taxa_barplot = os.path.join(OUTPUTDIR, PROJ, "qiime2", PROJ + "-taxa-barplots2.qzv")
     log:
       os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_taxa_barplot2.log")
-    singularity:
-      config["singularity_image"]
     shell:
      """
      qiime taxa barplot2 \
@@ -359,8 +339,6 @@ rule qiime_taxonomy_export:
     taxonomy_tsv = os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-taxonomy.tsv")
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_taxonomy_export.log")
-  singularity:
-    config["singularity_image"]
   shell:
     """
     tmpdir=$(dirname {output.taxonomy_tsv})/.tmp_taxonomy_export
@@ -380,8 +358,6 @@ rule qiime_table_export:
     asv_table = os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-asv-table.tsv")
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_table_export.log")
-  singularity:
-    config["singularity_image"]
   shell:
     """
     tmpdir=$(dirname {output.asv_table})/.tmp_table_export
@@ -405,8 +381,6 @@ rule qiime_rep_seqs_export:
     rep_seqs_fasta = os.path.join(OUTPUTDIR, PROJ, "final_output", PROJ + "-rep-seqs.fasta")
   log:
     os.path.join(SCRATCH, "qiime2", "logs", PROJ, PROJ + "_q2_rep_seqs_export.log")
-  singularity:
-    config["singularity_image"]
   shell:
     """
     tmpdir=$(dirname {output.rep_seqs_fasta})/.tmp_repseqs_export

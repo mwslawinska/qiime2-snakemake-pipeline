@@ -3,3 +3,5 @@ scratch/
 Results/
 .snakemake/
 dag.dot
+metadata/
+run_snakemake.slurm

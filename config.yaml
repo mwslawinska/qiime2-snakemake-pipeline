@@ -1,9 +1,6 @@
 # Parameters that require personalization -----
 proj_name: your_project_name
 
-# QIIME2 container to use
-singularity_image: "/path/to/qiime-2026.1.sif"
-
 #Uncomment the lines with the primer sequences used to generate the amplicon library.
 # cutadapt: primer trimming. 
 # B3 (341F-806R)
