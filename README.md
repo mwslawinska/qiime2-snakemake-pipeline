@@ -38,7 +38,7 @@ Copy your sample metadata/mapping file into the project’s `metadata` folder an
 Double-check that barcode sequences in `mapping.txt` are correct — for example, a barcode column entry might look like `AGCTGACTAGCT` (12 bp, matching your sequencing setup).
 The file should have columns #SampleID, Forward_Barcode, Reverse_Barcode.
 
-## 3. Organize Raw FASTQ Files
+## 3. Organize raw FASTQ files
 
 Place your raw sequencing FASTQ files into the `raw_data/` directory, following this naming convention:
 
