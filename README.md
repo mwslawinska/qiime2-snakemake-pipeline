@@ -1,119 +1,141 @@
-# bacteria_snakemake_pipeline_novogene
+# QIIME2 Snakemake Pipeline
 
-This pipeline was created for 16S natural communities sequenced at Novogene.
+A Snakemake pipeline for 16S amplicon analysis of natural microbial communities, built on QIIME2.
+
+## 0. Setup
+
+This branch requires SLURM and Singularity/Apptainer to be available on your cluster.
+
+In `config.yaml`, set `singularity_image` to the path of your own QIIME2 container:
+
+```config.yaml
+singularity_image: "/path/to/your/qiime-2026.1.sif"  # <-- EDIT THIS
+```
+
+If you don't already have this image, create the container (for details, see https://library.qiime2.org/quickstart/qiime2):
+```
+singularity pull docker://quay.io/qiime2/amplicon:2026.1
+```
+or 
+```
+docker pull quay.io/qiime2/amplicon:2026.1
+```
+
+## Getting started
 
 Follow these steps to prepare your input files before running the analysis pipeline:
 
-## 1. Edit the Config File
+## 1. Edit the configuration file
 
-- Open the configuration file `config.yaml` for your project.
-- Update the `proj_name` field with your current library or project name.
-- Identify the primer section (e.g., B3 or B5).
-  - Uncomment the primer sequences used in this library.
-  - Comment out primer sequences not used.
-- If running only a subset of the library reads through the pipeline, then modify the `pct` value (e.g., `pct: 50` means to use only 50% of the total reads).
+Open `config.yaml` and update the following:
 
-## 2. Prepare Metadata Files
+- **`proj_name`** — set this to your project or library name.
+- **Primer selection** — the config file lists several primer sets (e.g. commented-out options for different primer pairs). Uncomment the primer sequences used in your library and leave the others commented out. For now, the options include B3 and B5 primer sets.
+  - B3 (341F-806R)
+  - B5 (799F-1192R)
+- **`pct`** — controls what fraction of reads are processed. For example, `pct: 50` runs the pipeline on a random 50% subset of reads (useful for quick test runs before a full run).
 
-- Copy your sample metadata/mapping file into the project’s `metadata` folder.
-  - The file should be renamed to `mapping.txt`.
-  - Make sure you use correct barcodes! (e.g. TACAGCGCATAC, no "AC" at the beginning)
-  - Example:
+## 2. Prepare metadata files
+
+Copy your sample metadata/mapping file into the project’s `metadata` folder and rename it to `mapping.txt`.
+
     ```
     cp /path/to/your/metadata.csv metadata/mapping.txt
     ```
+Double-check that barcode sequences in `mapping.txt` are correct — for example, a barcode column entry might look like `AGCTGACTAGCT` (12 bp, matching your sequencing setup).
+The file should have columns #SampleID, Forward_Barcode, Reverse_Barcode.
 
-## 3. Organize Raw FASTQ Files
+## 3. Organize raw FASTQ files
 
-- Place your raw sequencing FASTQ files into the `novogene_data` directory.
-- The files must follow this naming convention:
-  - Forward reads (`XXXXXXXXX_1.fq.gz`) : `sample_1.fq.gz`
-  - Reverse reads (`XXXXXXXXX_2.fq.gz`) : `sample_2.fq.gz`
-- If renaming is necessary, do so after copying:
-    ```
-    cp /path/to/your/rawdata/*fastq.gz novogene_data/
-    cd novogene_data
-    mv XXXXXX.fq.gz sample_1.fq.gz
-    mv XXXXXX.fq.gz sample_2.fq.gz
-    ```
+Place your raw sequencing FASTQ files into the `raw_data/` directory, following this naming convention:
+
+- Forward reads: `sample_1.fq.gz`
+- Reverse reads: `sample_2.fq.gz`
+
+If your files come with different names, rename them after copying:
+
+```bash
+cp /path/to/your/rawdata/*fastq.gz raw_data/
+cd raw_data
+mv XXXXXX.fq.gz sample_1.fq.gz
+mv XXXXXX.fq.gz sample_2.fq.gz
+```
 
 ## 4. Checklist before running Snakemake
 
 ### `config.yaml`
-
-- [] Library name has been stored into `proj_name`
-- [] Either B3 or B5 primers are uncommented
-- [] The correct classifier is uncommented
-- [] There is a correct path to the 'mapping_file'
-- [] If subsampling reads, make sure `pct` has been modified
-- [] cutadapt_error_rate: 0 is suggested, but you can change it to 0.1/0.17 if you have low depths
-- [] trunc_len_f and trunc_len_r are set to 0; they can be adapted based on the quality of your reads
+- [ ] `proj_name` is set to your library/project name
+- [ ] The correct primer pair is uncommented
+- [ ] The correct classifier is uncommented
+- [ ] `mapping_file` points to the correct path
+- [ ] If subsampling reads, `pct` has been modified
+- [ ] `cutadapt_error_rate: 0` is the default; adjust to 0.1–0.17 if you have low sequencing depth
+- [ ] `trunc_len_f` / `trunc_len_r` default to 0; adjust based on your read quality
 
 ### Required files
-- [] `sample_1.fq.gz` and `sample_2.fq.gz` stored in folder `novogene_data`
-- [] `mapping.txt` file , stored in folder `metadata`. Don't forget to check the mapping file using a tool like [Keemei](https://keemei.qiime2.org/).
+- [ ] `sample_1.fq.gz` and `sample_2.fq.gz` in `raw_data/`
+- [ ] `mapping.txt` in `metadata/` — validate it with [Keemei](https://keemei.qiime2.org/) before running
 
 ## 5. Run Snakemake
 - It is possible to do a dry-run of snakemake, using `-n`, just to verify that all the required input files are available.
 ```
-snakemake -n --snakefile Snakefile-SynCom
+snakemake -n --snakefile Snakefile-bacteriapipeline
 ```
 
 - If the console output does not display any message in red color it usually means that all required files to run the pipeline have already been provided and snakemake can be run. 
 
-You have two options to run the pipeline:
+## Running the Pipeline
 
-### 5a. Running from hpc nodes (faster)
+You have two options for running the pipeline, depending on your access.
 
-Log into hpc.
+### Option A: Running via SLURM (recommended for large datasets)
 
-Go to your project directory.
-In your project directory, `mkdir logs` for slurm logs (will tell you if the job crashes).
-
-`run_snakemake.slurm` automatically activates the required environment and module (you do not need to install or configure anything).
-Edit `run_snakemake.slurm`:
+1. Log into your HPC cluster and navigate to your project directory.
+2. Create a `logs/` directory for SLURM job logs:
+```bash
+   mkdir logs
 ```
-#!/bin/bash
-#SBATCH -p normal
-#SBATCH -J your_project_name <-- EDIT THIS
-#SBATCH --cpus-per-task=20
-#SBATCH --mem=100G
-#SBATCH --output=[your_dir]/logs/your_project_name.%J.out <-- EDIT THIS
-#SBATCH --error=[your_dir]/logs/your_project_name.%J.err <-- EDIT THIS
+3. Edit `run_snakemake.slurm` for your cluster's setup — at minimum, update the SLURM directives and load whatever Singularity/Apptainer module your cluster requires:
+```bash
+   #!/bin/bash
+   #SBATCH -p normal                                          # <-- EDIT: your cluster's partition
+   #SBATCH -J your_project_name                                # <-- EDIT: job name
+   #SBATCH --cpus-per-task=20                                  # adjust to your needs
+   #SBATCH --mem=100G                                          # adjust to your needs
+   #SBATCH --output=[your_dir]/logs/your_project_name.%J.out   # <-- EDIT: log path
+   #SBATCH --error=[your_dir]/logs/your_project_name.%J.err    # <-- EDIT: log path
 
-# Make sure logs directory exists
-mkdir -p ./logs
+   mkdir -p ./logs
 
-# Activate environment if needed
-# Load your institution's Singularity module here, e.g.:
-# module load singularity
+   # Load Singularity/Apptainer if required by your cluster, e.g.:
+   # module load singularity
 
-# Run Snakemake workflow
-# -p: print each shell command
-# --use-singularity: use the Singularity image specified in each rule
-# --rerun-incomplete: resume workflow if interrupted
-snakemake \
-    --snakefile Snakefile-bacteriapipeline \
-    --cores 32 \
-    -p \
-    --use-singularity \
-    --singularity-args="--cleanenv"
-
+   snakemake \
+       --snakefile Snakefile-bacteriapipeline \
+       --cores 32 \
+       -p \
+       --use-singularity \
+       --singularity-args="--cleanenv"
 ```
-- you might change `#SBATCH --cpus-per-task=` and `#SBATCH --mem=100G` if needed.
-
-Run the job:
+4. Submit the job:
+```bash
+   sbatch run_snakemake.slurm
 ```
-sbatch run_snakemake.slurm
+5. Check job status:
+```bash
+   squeue
 ```
 
-If you want to check if it's running, you can do `squeue`.
+### Option B: Running interactively (e.g. in a `screen` session)
 
-### 5b. Running from your node (screen)
-In this example we will use 20 cores ( `-c 20` ) for the pipeline. It's recommended to run with option `-p` to print into the console the actual command being run as it could help with troubleshooting.
+Useful for smaller datasets or testing. Adjust `-c` to the number of cores available to you:
+
+```bash
+snakemake -c 20 -p --snakefile Snakefile-bacteriapipeline --use-singularity --singularity-args="--cleanenv"
 ```
-snakemake -c 20 -p --snakefile Snakefile-bacteriapipeline
-```
+
+`-p` prints each shell command as it runs, which is useful for troubleshooting.
+
 
 ## Authors and acknowledgment
 Written by Magdalena W Slawinska (contact person) and inspired by scripts from José Flores-Uribe, Pengfan Zhang, and Ruben Garrido-Oter.
