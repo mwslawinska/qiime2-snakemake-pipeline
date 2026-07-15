@@ -1,6 +1,10 @@
 # QIIME2 Snakemake Pipeline
 
-A Snakemake pipeline for 16S amplicon analysis of natural microbial communities, built on QIIME2.
+A Snakemake pipeline for 16S amplicon analysis of natural microbial communities, built on QIIME2 2026.1.
+
+**Branches:**
+- `main` — runs locally via conda/micromamba, no HPC access required
+- `hpc` — template for SLURM + Singularity/Apptainer clusters
 
 ## 0. Setup
 
